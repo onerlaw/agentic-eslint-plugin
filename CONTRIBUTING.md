@@ -73,13 +73,24 @@ OIDC, as PyPI does) is still open. So the first version goes up by hand, once:
 
 1. **Own the scope.** Create an npm **Organization** named `onerlaw`
    (<https://www.npmjs.com/org/create>). Free for public packages.
-2. **Publish once, manually**, from a checkout of `main`:
+2. **Publish once, manually**, from a clean checkout of `main`.
+
+   The version matters. `package.json` carries the placeholder
+   `0.0.0-semantically-released` (semantic-release owns the real number), and the only
+   tag today is `v0.0.0`, so the next computed release is **0.1.0**. Publish that, and
+   tag it — otherwise the first automated run recomputes 0.1.0 and fails with a
+   "version already exists" conflict:
+
    ```sh
-   npm login          # 2FA prompt
-   npm publish        # --access public is already in package.json
+   npm login                                   # 2FA prompt
+   npm version 0.1.0 --no-git-tag-version      # local only; do NOT commit
+   npm publish                                 # access:public is already set
+   git checkout package.json                   # restore the placeholder
+   git tag v0.1.0 && git push origin v0.1.0    # tells semantic-release 0.1.0 is out
    ```
-   Use the version semantic-release would have chosen, or any version — the next
-   automated release computes the following one from the commit history.
+
+   From here semantic-release continues from 0.1.0 — the next `fix:` gives 0.1.1, the
+   next `feat:` gives 0.2.0.
 3. **Configure the trusted publisher**, either in the package's settings on npmjs.com
    ("Trusted Publisher" section), or from the CLI (npm >= 11.15.0, 2FA enabled):
    ```sh
