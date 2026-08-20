@@ -70,13 +70,21 @@ jobs:
 
       - run: npm ci
 
-      # No NPM_TOKEN. Authentication is npm trusted publishing (OIDC): the job's
-      # id-token is exchanged for a short-lived credential at publish time, and
-      # provenance is generated automatically — no --provenance flag needed.
+      # Auth resolves itself, in this order:
+      #   1. npm trusted publishing (OIDC) — the job's id-token is exchanged for
+      #      a short-lived credential, and provenance is automatic.
+      #   2. NPM_TOKEN, only if the OIDC exchange fails.
+      #
+      # npm cannot mint an OIDC credential for a package that does not exist yet
+      # (a trusted publisher is configured ON a package), so the FIRST publish
+      # needs a token. After that, delete the NPM_TOKEN secret: an unset secret
+      # is an empty string, the plugin treats that as absent, and the job is
+      # OIDC-only with no standing credential. No code change needed to switch.
       - name: semantic-release
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 
       # semantic-release creates and pushes the version tag BEFORE it publishes,

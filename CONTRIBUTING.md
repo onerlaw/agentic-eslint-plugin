@@ -69,35 +69,30 @@ provenance is generated automatically.
 npm cannot do the **first** publish over OIDC. A trusted publisher is configured on a
 package, and the package must already exist — `npm trust`'s own prerequisites say so, and
 [npm/cli#8544](https://github.com/npm/cli/issues/8544) (allow the initial publish over
-OIDC, as PyPI does) is still open. So the first version goes up by hand, once:
+OIDC, as PyPI does) is still open. The registry says so plainly:
+`404 OIDC token exchange error - package not found`.
 
-1. **Own the scope.** Create an npm **Organization** named `onerlaw`
+So the first release uses a token, and every release after it uses OIDC. The workflow
+already handles both — it tries OIDC first and falls back to `NPM_TOKEN` only if that
+fails, so switching over is deleting a secret, not editing code.
+
+1. **Own the scope.** An npm **Organization** named `onerlaw` must exist
    (<https://www.npmjs.com/org/create>). Free for public packages.
-2. **Publish once, manually**, from a clean checkout of `main`.
-
-   The version matters. `package.json` carries the placeholder
-   `0.0.0-semantically-released` (semantic-release owns the real number), and the only
-   tag today is `v0.0.0`, so the next computed release is **0.1.0**. Publish that, and
-   tag it — otherwise the first automated run recomputes 0.1.0 and fails with a
-   "version already exists" conflict:
-
-   ```sh
-   npm login                                   # 2FA prompt
-   npm version 0.1.0 --no-git-tag-version      # local only; do NOT commit
-   npm publish                                 # access:public is already set
-   git checkout package.json                   # restore the placeholder
-   git tag v0.1.0 && git push origin v0.1.0    # tells semantic-release 0.1.0 is out
-   ```
-
-   From here semantic-release continues from 0.1.0 — the next `fix:` gives 0.1.1, the
-   next `feat:` gives 0.2.0.
-3. **Configure the trusted publisher**, either in the package's settings on npmjs.com
-   ("Trusted Publisher" section), or from the CLI (npm >= 11.15.0, 2FA enabled):
+2. **Mint a bootstrap token.** npmjs.com → Access Tokens → Generate New Token →
+   **Granular Access Token**, with **read and write** on the `@onerlaw` scope.
+   A Classic **Automation** token also works. A Classic **Publish** token does **not** —
+   npm still demands a 2FA one-time password for it and CI fails with `EOTP`.
+3. **Store it.** Repo → Settings → Secrets and variables → Actions → `NPM_TOKEN`.
+4. **Release.** Merge to `main`, or re-run the Release workflow. This publishes the
+   first version using the token.
+5. **Configure trusted publishing** now that the package exists — in the package's
+   settings on npmjs.com ("Trusted Publisher"), or from the CLI (npm >= 11.15.0):
    ```sh
    npm trust github @onerlaw/agentic-eslint-plugin \
      --file release.yml --repo onerlaw/agentic-eslint-plugin --allow-publish
    ```
-4. From then on, every merge to `main` releases with no credential in the repo.
+6. **Delete the `NPM_TOKEN` secret and revoke the token.** The next run finds no token,
+   uses OIDC, and the repo holds no standing credential.
 
 ### Why there is no token
 
