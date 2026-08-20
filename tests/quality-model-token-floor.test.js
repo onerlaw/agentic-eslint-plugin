@@ -3,7 +3,7 @@ import { RuleTester } from "eslint";
 import rule from "../src/rules/quality-model-token-floor.js";
 
 const F = "packages/server/src/services/chat/stream-answer.ts";
-const OPTIONS = [{ tierFunction: "getQualityModel", floorIdentifier: "REASONING_MAX_TOKENS_FLOOR" }];
+const OPTIONS = [{ tierFunction: "getQualityModel", floorIdentifier: "TOKEN_FLOOR" }];
 
 const ruleTester = new RuleTester({ languageOptions: { parser: tsParser } });
 
@@ -18,8 +18,8 @@ ruleTester.run("quality-model-token-floor", rule, {
       name: "the canonical spelling — the floor identifier used directly",
       filename: F,
       code: `${QUALITY_IMPORT}
-import { REASONING_MAX_TOKENS_FLOOR } from "../llm/token-budget.js";
-const req = { model: getQualityModel(), max_tokens: REASONING_MAX_TOKENS_FLOOR };`,
+import { TOKEN_FLOOR } from "../llm/token-budget.js";
+const req = { model: getQualityModel(), max_tokens: TOKEN_FLOOR };`,
     },
     {
       options: OPTIONS,
@@ -28,8 +28,8 @@ const req = { model: getQualityModel(), max_tokens: REASONING_MAX_TOKENS_FLOOR }
       name: "local const bound to the floor",
       filename: F,
       code: `${QUALITY_IMPORT}
-import { REASONING_MAX_TOKENS_FLOOR } from "../llm/token-budget.js";
-const REWRITE_MAX_TOKENS = REASONING_MAX_TOKENS_FLOOR;
+import { TOKEN_FLOOR } from "../llm/token-budget.js";
+const REWRITE_MAX_TOKENS = TOKEN_FLOOR;
 const req = { model: getQualityModel(), max_tokens: REWRITE_MAX_TOKENS };`,
     },
     {

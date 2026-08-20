@@ -37,16 +37,16 @@ on the thing the file cannot leave out** is what makes it hard to evade by accid
 
 ```ts
 // ✗ imports the marker, never calls the builder
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
+import { FONT_STYLES } from "@/lib/markdown-font-styles";
 export function buildLegalStyles(theme) {
-  return { ...MARKDOWN_FONT_STYLES, body: { fontSize: 16 } };
+  return { ...FONT_STYLES, body: { fontSize: 16 } };
 }
 
 // ✓
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
-import { buildMarkdownCodeStyles } from "@/lib/markdown-code-styles";
+import { FONT_STYLES } from "@/lib/markdown-font-styles";
+import { buildCodeStyles } from "@/lib/markdown-code-styles";
 export function buildLegalStyles(theme) {
-  return { ...MARKDOWN_FONT_STYLES, ...buildMarkdownCodeStyles(theme) };
+  return { ...FONT_STYLES, ...buildCodeStyles(theme) };
 }
 ```
 
@@ -83,7 +83,7 @@ export default [
     rules: {
       "agentic/markdown-map-code-styles": [
         "error",
-        { markerImport: "MARKDOWN_FONT_STYLES", builder: "buildMarkdownCodeStyles" },
+        { markerImport: "FONT_STYLES", builder: "buildCodeStyles" },
       ],
     },
   },

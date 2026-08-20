@@ -90,7 +90,7 @@ export default [
     rules: {
       "agentic/quality-model-token-floor": [
         "error",
-        { tierFunction: "getQualityModel", floorIdentifier: "REASONING_MAX_TOKENS_FLOOR" },
+        { tierFunction: "getQualityModel", floorIdentifier: "TOKEN_FLOOR" },
       ],
     },
   },

@@ -5,7 +5,7 @@ import rule from "../src/rules/rpc-error-standard.js";
 // This rule needs no filesystem, so relative filenames are fine — but they must
 // still express the two exemptions (src/lib/ and *.test.*), which are path-shaped.
 const FEATURE = "packages/web/src/components/screens/jobs/use-jobs.ts";
-const OPTIONS = [{ errorModule: "/src/lib/", sentinels: ["consent_required"], consentHelper: "isConsentError" }];
+const OPTIONS = [{ errorModule: "/src/lib/", sentinels: ["consent_required"], consentHelper: "isAuthError" }];
 
 const ruleTester = new RuleTester({
   languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
@@ -100,9 +100,9 @@ ruleTester.run("rpc-error-standard", rule, {
     {
       options: OPTIONS,
       // PREDICATE 3.
-      name: "isConsentError imported outside src/lib/",
+      name: "isAuthError imported outside src/lib/",
       filename: FEATURE,
-      code: 'import { isConsentError } from "@/lib/consent";\nexport const a = isConsentError;',
+      code: 'import { isAuthError } from "@/lib/consent";\nexport const a = isAuthError;',
       errors: [{ messageId: "consentHelper" }],
     },
     {

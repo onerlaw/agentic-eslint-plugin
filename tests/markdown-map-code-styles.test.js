@@ -2,7 +2,7 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/markdown-map-code-styles.js";
 
-const OPTIONS = [{ markerImport: "MARKDOWN_FONT_STYLES", builder: "buildMarkdownCodeStyles" }];
+const OPTIONS = [{ markerImport: "FONT_STYLES", builder: "buildCodeStyles" }];
 
 const ruleTester = new RuleTester({ languageOptions: { parser: tsParser } });
 
@@ -13,8 +13,8 @@ const NOTES =
 const JOB = "packages/web/src/components/screens/detail/detail-styles.ts";
 const LEGAL = "packages/web/src/components/screens/legal/legal-document-styles.ts";
 
-const IMPORTS = `import { buildMarkdownCodeStyles } from "@/lib/markdown-code";
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";`;
+const IMPORTS = `import { buildCodeStyles } from "@/lib/markdown-code";
+import { FONT_STYLES } from "@/lib/markdown-fonts";`;
 
 ruleTester.run("markdown-map-code-styles", rule, {
   valid: [
@@ -24,8 +24,8 @@ ruleTester.run("markdown-map-code-styles", rule, {
       filename: CHAT,
       code: `${IMPORTS}
 export function buildChatMarkdownStyles(theme) {
-  const code = buildMarkdownCodeStyles(theme, { fontSize: 13, lineHeight: 22 });
-  return { ...MARKDOWN_FONT_STYLES, ...code, body: { fontSize: 14 } };
+  const code = buildCodeStyles(theme, { fontSize: 13, lineHeight: 22 });
+  return { ...FONT_STYLES, ...code, body: { fontSize: 14 } };
 }`,
     },
     {
@@ -37,9 +37,9 @@ export function buildChatMarkdownStyles(theme) {
       filename: NOTES,
       code: `${IMPORTS}
 export function buildScratchNoteMarkdownStyles(theme) {
-  const code = buildMarkdownCodeStyles(theme, { fontSize: 13, lineHeight: 24 });
+  const code = buildCodeStyles(theme, { fontSize: 13, lineHeight: 24 });
   return {
-    ...MARKDOWN_FONT_STYLES,
+    ...FONT_STYLES,
     ...code,
     code_block: { ...code.code_block, borderWidth: 0, padding: 8 },
     fence: { ...code.fence, borderWidth: 0, padding: 8 },
@@ -53,7 +53,7 @@ export function buildScratchNoteMarkdownStyles(theme) {
       name: "a file importing neither constant is out of scope",
       filename: "packages/web/src/lib/markdown-code.ts",
       code: `import { MARKDOWN_CODE_FONT_STYLE } from "./markdown-font-styles";
-export function buildMarkdownCodeStyles(theme, metrics) {
+export function buildCodeStyles(theme, metrics) {
   return { code_inline: { ...MARKDOWN_CODE_FONT_STYLE, padding: 0, lineHeight: metrics.lineHeight } };
 }`,
     },
@@ -63,10 +63,10 @@ export function buildMarkdownCodeStyles(theme, metrics) {
       // which is what the rule keys on.
       name: "an aliased import still counts as using the builder",
       filename: JOB,
-      code: `import { buildMarkdownCodeStyles as buildCode } from "@/lib/markdown-code";
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
+      code: `import { buildCodeStyles as buildCode } from "@/lib/markdown-code";
+import { FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildMarkdownStyles(theme) {
-  return { ...MARKDOWN_FONT_STYLES, ...buildCode(theme, { fontSize: 13, lineHeight: 22 }) };
+  return { ...FONT_STYLES, ...buildCode(theme, { fontSize: 13, lineHeight: 22 }) };
 }`,
     },
   ],
@@ -78,9 +78,9 @@ export function buildMarkdownStyles(theme) {
       // which on a dark page is a bright rectangle.
       name: "a map that supplies no code rules at all",
       filename: LEGAL,
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
+      code: `import { FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildLegalMarkdownStyles(theme) {
-  return { ...MARKDOWN_FONT_STYLES, body: { fontSize: 16, lineHeight: 26 } };
+  return { ...FONT_STYLES, body: { fontSize: 16, lineHeight: 26 } };
 }`,
       errors: [{ messageId: "missingCodeStyles" }],
     },
@@ -91,10 +91,10 @@ export function buildLegalMarkdownStyles(theme) {
       // rule exists to stop, whether or not the author remembered a background colour.
       name: "hand-rolled code rules instead of the shared builder",
       filename: NOTES,
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
+      code: `import { FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildScratchNoteMarkdownStyles(theme) {
   return {
-    ...MARKDOWN_FONT_STYLES,
+    ...FONT_STYLES,
     code_inline: { backgroundColor: theme.surface, paddingHorizontal: 4, borderRadius: 3 },
   };
 }`,
@@ -106,9 +106,9 @@ export function buildScratchNoteMarkdownStyles(theme) {
       // block enumerates.
       name: "a new surface that nobody has added a test block for",
       filename: "packages/web/src/components/screens/notes/release-notes-styles.ts",
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
+      code: `import { FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildReleaseNotesStyles(theme) {
-  return { ...MARKDOWN_FONT_STYLES, body: { color: theme.foreground } };
+  return { ...FONT_STYLES, body: { color: theme.foreground } };
 }`,
       errors: [{ messageId: "missingCodeStyles" }],
     },
