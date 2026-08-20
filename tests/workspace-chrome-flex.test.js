@@ -2,7 +2,7 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/workspace-chrome-flex.js";
 
-const IN_CHROME = "packages/frontend/src/components/workspace/workspace-pane-style.ts";
+const IN_CHROME = "packages/web/src/components/workspace/workspace-pane-style.ts";
 const ALLOWED = [{ allow: ["/workspace/pane-toggle-segment.tsx", "/workspace/pane-header.tsx"] }];
 const ruleTester = new RuleTester({
   languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
@@ -27,18 +27,18 @@ ruleTester.run("workspace-chrome-flex", rule, {
     },
     {
       name: "guarded as a JSX $gtMd attribute",
-      filename: "packages/frontend/src/components/workspace/pane-title.tsx",
+      filename: "packages/web/src/components/workspace/pane-title.tsx",
       code: "export const A = () => <View $gtMd={{ flex: 1 }} />;",
     },
     {
       name: "allowlisted row child: pane-toggle-segment",
-      filename: "packages/frontend/src/components/workspace/pane-toggle-segment.tsx",
+      filename: "packages/web/src/components/workspace/pane-toggle-segment.tsx",
       options: ALLOWED,
       code: "export const A = () => <XStack flex={1} />;",
     },
     {
       name: "allowlisted row child: pane-header",
-      filename: "packages/frontend/src/components/workspace/pane-header.tsx",
+      filename: "packages/web/src/components/workspace/pane-header.tsx",
       options: ALLOWED,
       code: "export const A = () => <XStack flex={1} />;",
     },
@@ -64,13 +64,13 @@ ruleTester.run("workspace-chrome-flex", rule, {
     },
     {
       name: "inline JSX flex={2} in the chrome",
-      filename: "packages/frontend/src/components/workspace/pane-switcher.tsx",
+      filename: "packages/web/src/components/workspace/pane-switcher.tsx",
       code: "export const A = () => <YStack flex={2} />;",
       errors: [{ messageId: "unguardedFlex" }],
     },
     {
       name: "a non-allowlisted file gets no exemption",
-      filename: "packages/frontend/src/components/workspace/pane-compact-menu.tsx",
+      filename: "packages/web/src/components/workspace/pane-compact-menu.tsx",
       options: ALLOWED,
       code: "export const A = () => <XStack flex={1} />;",
       errors: [{ messageId: "unguardedFlex" }],

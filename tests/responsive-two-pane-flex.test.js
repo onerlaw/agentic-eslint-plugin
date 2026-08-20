@@ -2,7 +2,7 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/responsive-two-pane-flex.js";
 
-const SCREEN = "packages/frontend/src/components/screens/account/account-content.tsx";
+const SCREEN = "packages/web/src/components/screens/account/account-content.tsx";
 const ruleTester = new RuleTester({
   languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
 });

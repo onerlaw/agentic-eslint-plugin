@@ -19,7 +19,7 @@ function isCapProperty(node, capProperty) {
  * Classify a `max_tokens` value against the policy.
  *
  * Resolves exactly ONE level of LOCAL indirection, because that is the shape the
- * shipped bug took: `const CAREER_CHAT_ANSWER_MAX_TOKENS = 700` used as the cap.
+ * shipped bug took: `const ANSWER_MAX_TOKENS = 700` used as the cap.
  * A rule that only banned inline numeric literals would have passed the very file
  * it exists for — repo-wide, `max_tokens: <number>` had zero occurrences.
  *

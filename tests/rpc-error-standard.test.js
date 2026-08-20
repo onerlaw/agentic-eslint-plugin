@@ -4,8 +4,8 @@ import rule from "../src/rules/rpc-error-standard.js";
 
 // This rule needs no filesystem, so relative filenames are fine — but they must
 // still express the two exemptions (src/lib/ and *.test.*), which are path-shaped.
-const FEATURE = "packages/frontend/src/components/screens/jobs/use-jobs.ts";
-const OPTIONS = [{ errorModule: "/src/lib/", sentinels: ["llm_consent_required"], consentHelper: "isConsentError" }];
+const FEATURE = "packages/web/src/components/screens/jobs/use-jobs.ts";
+const OPTIONS = [{ errorModule: "/src/lib/", sentinels: ["consent_required"], consentHelper: "isConsentError" }];
 
 const ruleTester = new RuleTester({
   languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
@@ -40,19 +40,19 @@ ruleTester.run("rpc-error-standard", rule, {
     {
       options: OPTIONS,
       name: "src/lib/ is the standard's own home — exempt",
-      filename: "packages/frontend/src/lib/errors/classify-rpc-error.ts",
+      filename: "packages/web/src/lib/errors/classify-rpc-error.ts",
       code: 'import { Code, ConnectError } from "@connectrpc/connect";\nexport const a = [Code, ConnectError];',
     },
     {
       options: OPTIONS,
       name: "src/lib/ may own the sentinel literal",
-      filename: "packages/frontend/src/lib/is-consent-error.ts",
-      code: 'export const SENTINEL = "llm_consent_required";',
+      filename: "packages/web/src/lib/consent.ts",
+      code: 'export const SENTINEL = "consent_required";',
     },
     {
       options: OPTIONS,
       name: "test files construct wire errors deliberately — exempt",
-      filename: "packages/frontend/src/components/screens/jobs/use-jobs.test.ts",
+      filename: "packages/web/src/components/screens/jobs/use-jobs.test.ts",
       code: 'import { ConnectError } from "@connectrpc/connect";\nexport const a = ConnectError;',
     },
   ],
@@ -102,7 +102,7 @@ ruleTester.run("rpc-error-standard", rule, {
       // PREDICATE 3.
       name: "isConsentError imported outside src/lib/",
       filename: FEATURE,
-      code: 'import { isConsentError } from "@/lib/is-consent-error";\nexport const a = isConsentError;',
+      code: 'import { isConsentError } from "@/lib/consent";\nexport const a = isConsentError;',
       errors: [{ messageId: "consentHelper" }],
     },
     {
@@ -111,14 +111,14 @@ ruleTester.run("rpc-error-standard", rule, {
       // rule `-imports` is exactly how it would have been dropped.
       name: "raw sentinel literal outside src/lib/",
       filename: FEATURE,
-      code: 'export const a = err.message === "llm_consent_required";',
+      code: 'export const a = err.message === "consent_required";',
       errors: [{ messageId: "sentinel" }],
     },
     {
       options: OPTIONS,
       name: "sentinel as a bare template literal",
       filename: FEATURE,
-      code: "export const a = `llm_consent_required`;",
+      code: "export const a = `consent_required`;",
       errors: [{ messageId: "sentinel" }],
     },
   ],

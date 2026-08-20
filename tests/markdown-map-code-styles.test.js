@@ -7,14 +7,14 @@ const OPTIONS = [{ markerImport: "MARKDOWN_FONT_STYLES", builder: "buildMarkdown
 const ruleTester = new RuleTester({ languageOptions: { parser: tsParser } });
 
 // The four real maps, by path, so a case reads as the file it stands for.
-const CHAT = "packages/frontend/src/components/chat/chat-markdown-styles.ts";
+const CHAT = "packages/web/src/components/chat/chat-markdown-styles.ts";
 const NOTES =
-  "packages/frontend/src/components/screens/scratch-notes/scratch-note-markdown-styles.ts";
-const JOB = "packages/frontend/src/components/screens/job-detail/job-detail-styles.ts";
-const LEGAL = "packages/frontend/src/components/screens/legal/legal-document-styles.ts";
+  "packages/web/src/components/screens/scratch-notes/scratch-note-markdown-styles.ts";
+const JOB = "packages/web/src/components/screens/detail/detail-styles.ts";
+const LEGAL = "packages/web/src/components/screens/legal/legal-document-styles.ts";
 
-const IMPORTS = `import { buildMarkdownCodeStyles } from "@/lib/markdown-code-styles";
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";`;
+const IMPORTS = `import { buildMarkdownCodeStyles } from "@/lib/markdown-code";
+import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";`;
 
 ruleTester.run("markdown-map-code-styles", rule, {
   valid: [
@@ -51,7 +51,7 @@ export function buildScratchNoteMarkdownStyles(theme) {
       // The builder's own module, and anything else that imports neither constant, is
       // simply not a markdown style map.
       name: "a file importing neither constant is out of scope",
-      filename: "packages/frontend/src/lib/markdown-code-styles.ts",
+      filename: "packages/web/src/lib/markdown-code.ts",
       code: `import { MARKDOWN_CODE_FONT_STYLE } from "./markdown-font-styles";
 export function buildMarkdownCodeStyles(theme, metrics) {
   return { code_inline: { ...MARKDOWN_CODE_FONT_STYLE, padding: 0, lineHeight: metrics.lineHeight } };
@@ -63,8 +63,8 @@ export function buildMarkdownCodeStyles(theme, metrics) {
       // which is what the rule keys on.
       name: "an aliased import still counts as using the builder",
       filename: JOB,
-      code: `import { buildMarkdownCodeStyles as buildCode } from "@/lib/markdown-code-styles";
-import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
+      code: `import { buildMarkdownCodeStyles as buildCode } from "@/lib/markdown-code";
+import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildMarkdownStyles(theme) {
   return { ...MARKDOWN_FONT_STYLES, ...buildCode(theme, { fontSize: 13, lineHeight: 22 }) };
 }`,
@@ -78,7 +78,7 @@ export function buildMarkdownStyles(theme) {
       // which on a dark page is a bright rectangle.
       name: "a map that supplies no code rules at all",
       filename: LEGAL,
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
+      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildLegalMarkdownStyles(theme) {
   return { ...MARKDOWN_FONT_STYLES, body: { fontSize: 16, lineHeight: 26 } };
 }`,
@@ -91,7 +91,7 @@ export function buildLegalMarkdownStyles(theme) {
       // rule exists to stop, whether or not the author remembered a background colour.
       name: "hand-rolled code rules instead of the shared builder",
       filename: NOTES,
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
+      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildScratchNoteMarkdownStyles(theme) {
   return {
     ...MARKDOWN_FONT_STYLES,
@@ -105,8 +105,8 @@ export function buildScratchNoteMarkdownStyles(theme) {
       // The case the rule is actually for: a FIFTH map, in a file no hand-written test
       // block enumerates.
       name: "a new surface that nobody has added a test block for",
-      filename: "packages/frontend/src/components/screens/whats-new/release-notes-styles.ts",
-      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-font-styles";
+      filename: "packages/web/src/components/screens/notes/release-notes-styles.ts",
+      code: `import { MARKDOWN_FONT_STYLES } from "@/lib/markdown-fonts";
 export function buildReleaseNotesStyles(theme) {
   return { ...MARKDOWN_FONT_STYLES, body: { color: theme.foreground } };
 }`,

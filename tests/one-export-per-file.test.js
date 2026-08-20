@@ -2,7 +2,7 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/one-export-per-file.js";
 
-const F = "packages/api/src/services/probe.ts";
+const F = "packages/server/src/services/probe.ts";
 const ruleTester = new RuleTester({
   languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
 });
@@ -43,7 +43,7 @@ ruleTester.run("one-export-per-file", rule, {
     },
     {
       name: "allowlisted file",
-      filename: "packages/api/src/services/allowed.ts",
+      filename: "packages/server/src/services/allowed.ts",
       options: [{ allow: ["/services/allowed.ts"] }],
       code: "export function a() { return 1; }\nexport function b() { return 2; }",
     },

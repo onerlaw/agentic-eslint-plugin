@@ -2,14 +2,14 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/quality-model-token-floor.js";
 
-const F = "packages/api/src/services/career-chat/stream-career-chat-answer.ts";
-const OPTIONS = [{ tierFunction: "getApiQualityModel", floorIdentifier: "REASONING_MAX_TOKENS_FLOOR" }];
+const F = "packages/server/src/services/chat/stream-answer.ts";
+const OPTIONS = [{ tierFunction: "getQualityModel", floorIdentifier: "REASONING_MAX_TOKENS_FLOOR" }];
 
 const ruleTester = new RuleTester({ languageOptions: { parser: tsParser } });
 
 // The import line every QUALITY call site carries. Kept as a fragment so each
 // case reads as the delta from a real file rather than a synthetic snippet.
-const QUALITY_IMPORT = 'import { getApiQualityModel } from "../llm/model-ids.js";';
+const QUALITY_IMPORT = 'import { getQualityModel } from "../llm/models.js";';
 
 ruleTester.run("quality-model-token-floor", rule, {
   valid: [
@@ -18,8 +18,8 @@ ruleTester.run("quality-model-token-floor", rule, {
       name: "the canonical spelling — the floor identifier used directly",
       filename: F,
       code: `${QUALITY_IMPORT}
-import { REASONING_MAX_TOKENS_FLOOR } from "../llm/reasoning-token-budget.js";
-const req = { model: getApiQualityModel(), max_tokens: REASONING_MAX_TOKENS_FLOOR };`,
+import { REASONING_MAX_TOKENS_FLOOR } from "../llm/token-budget.js";
+const req = { model: getQualityModel(), max_tokens: REASONING_MAX_TOKENS_FLOOR };`,
     },
     {
       options: OPTIONS,
@@ -28,9 +28,9 @@ const req = { model: getApiQualityModel(), max_tokens: REASONING_MAX_TOKENS_FLOO
       name: "local const bound to the floor",
       filename: F,
       code: `${QUALITY_IMPORT}
-import { REASONING_MAX_TOKENS_FLOOR } from "../llm/reasoning-token-budget.js";
+import { REASONING_MAX_TOKENS_FLOOR } from "../llm/token-budget.js";
 const REWRITE_MAX_TOKENS = REASONING_MAX_TOKENS_FLOOR;
-const req = { model: getApiQualityModel(), max_tokens: REWRITE_MAX_TOKENS };`,
+const req = { model: getQualityModel(), max_tokens: REWRITE_MAX_TOKENS };`,
     },
     {
       options: OPTIONS,
@@ -39,31 +39,31 @@ const req = { model: getApiQualityModel(), max_tokens: REWRITE_MAX_TOKENS };`,
       name: "imported alias is allowed — the documented blind spot",
       filename: F,
       code: `${QUALITY_IMPORT}
-import { EDIT_PROPOSAL_MAX_TOKENS } from "./chat-edit-constants.js";
-const req = { model: getApiQualityModel(), max_tokens: EDIT_PROPOSAL_MAX_TOKENS };`,
+import { PROPOSAL_MAX_TOKENS } from "./chat-edit-constants.js";
+const req = { model: getQualityModel(), max_tokens: PROPOSAL_MAX_TOKENS };`,
     },
     {
       options: OPTIONS,
       name: "a numeric cap in a FAST-tier file is out of scope",
-      filename: "packages/api/src/services/career-profile/llm/generate-merge-ops.ts",
-      code: `import { getApiFastModel } from "../../llm/model-ids.js";
-const CAREER_PROFILE_MERGE_MAX_TOKENS = 8192;
-const req = { model: getApiFastModel(), max_tokens: CAREER_PROFILE_MERGE_MAX_TOKENS };`,
+      filename: "packages/server/src/services/profile/llm/generate-merge-ops.ts",
+      code: `import { getFastModel } from "../../llm/models.js";
+const MERGE_MAX_TOKENS = 8192;
+const req = { model: getFastModel(), max_tokens: MERGE_MAX_TOKENS };`,
     },
     {
       options: OPTIONS,
       name: "a numeric cap in a JUDGE-tier file is out of scope",
-      filename: "packages/api/src/services/resume-ats/ai-scan/run-judge.ts",
-      code: `import { LLM_MODEL_JUDGE } from "../../llm/model-ids.js";
+      filename: "packages/server/src/services/scan/run-judge.ts",
+      code: `import { JUDGE_MODEL } from "../../llm/models.js";
 const JUDGE_MAX_TOKENS = 4096;
-const req = { model: LLM_MODEL_JUDGE, max_tokens: JUDGE_MAX_TOKENS };`,
+const req = { model: JUDGE_MODEL, max_tokens: JUDGE_MAX_TOKENS };`,
     },
     {
       options: OPTIONS,
       name: "a non-cap property named something else is untouched",
       filename: F,
       code: `${QUALITY_IMPORT}
-const req = { model: getApiQualityModel(), temperature: 0 };`,
+const req = { model: getQualityModel(), temperature: 0 };`,
     },
   ],
 
@@ -76,8 +76,8 @@ const req = { model: getApiQualityModel(), temperature: 0 };`,
       name: "local const bound to a number — the spelling that shipped",
       filename: F,
       code: `${QUALITY_IMPORT}
-const CAREER_CHAT_ANSWER_MAX_TOKENS = 700;
-const req = { model: getApiQualityModel(), max_tokens: CAREER_CHAT_ANSWER_MAX_TOKENS };`,
+const ANSWER_MAX_TOKENS = 700;
+const req = { model: getQualityModel(), max_tokens: ANSWER_MAX_TOKENS };`,
       errors: [{ messageId: "localLiteralCap" }],
     },
     {
@@ -85,7 +85,7 @@ const req = { model: getApiQualityModel(), max_tokens: CAREER_CHAT_ANSWER_MAX_TO
       name: "inline numeric literal",
       filename: F,
       code: `${QUALITY_IMPORT}
-const req = { model: getApiQualityModel(), max_tokens: 700 };`,
+const req = { model: getQualityModel(), max_tokens: 700 };`,
       errors: [{ messageId: "literalCap" }],
     },
     {
@@ -93,7 +93,7 @@ const req = { model: getApiQualityModel(), max_tokens: 700 };`,
       name: "a generous inline number is still wrong — the policy is one value, not a threshold",
       filename: F,
       code: `${QUALITY_IMPORT}
-const req = { model: getApiQualityModel(), max_tokens: 65536 };`,
+const req = { model: getQualityModel(), max_tokens: 65536 };`,
       errors: [{ messageId: "literalCap" }],
     },
     {
@@ -101,7 +101,7 @@ const req = { model: getApiQualityModel(), max_tokens: 65536 };`,
       name: "quoted key spelling is caught too",
       filename: F,
       code: `${QUALITY_IMPORT}
-const req = { model: getApiQualityModel(), "max_tokens": 700 };`,
+const req = { model: getQualityModel(), "max_tokens": 700 };`,
       errors: [{ messageId: "literalCap" }],
     },
     {
@@ -109,7 +109,7 @@ const req = { model: getApiQualityModel(), "max_tokens": 700 };`,
       name: "the call site need not be adjacent — file scope is what marks the tier",
       filename: F,
       code: `${QUALITY_IMPORT}
-const MODEL = getApiQualityModel();
+const MODEL = getQualityModel();
 const CAP = 512;
 export function build() {
   return { model: MODEL, max_tokens: CAP };

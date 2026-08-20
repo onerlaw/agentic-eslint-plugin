@@ -2,7 +2,7 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/tamagui-native-id.js";
 
-const F = "packages/frontend/src/components/screens/account/probe.tsx";
+const F = "packages/web/src/components/screens/account/probe.tsx";
 const OPTIONS = [{ forwarders: { "@/components/ui/text-input": ["TextInput"], "./text-input": ["TextInput"] } }];
 
 const ruleTester = new RuleTester({
