@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # The release job gates on this. Two workflows independently triggered by the
+  # same push would let a red commit be versioned, tagged and published — and a
+  # tag that rode a broken release cannot be cleanly withdrawn.
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create tags + GitHub releases
+      issues: write
+      pull-requests: write
+      id-token: write # npm provenance
+    steps:
+      - name: Check for an npm token
+        id: guard
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Release skipped"
+              echo
+              echo 'No `NPM_TOKEN` secret is configured, so nothing was versioned, tagged or published.'
+              echo 'This is a skip, not a release. See CONTRIBUTING.md for the operator setup.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.has_token == 'true'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.has_token == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        if: steps.guard.outputs.has_token == 'true'
+
+      - name: semantic-release
+        if: steps.guard.outputs.has_token == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release

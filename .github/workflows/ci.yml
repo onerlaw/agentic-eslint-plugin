@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  commitlint:
+    name: conventional commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The PR title becomes the squash-merge commit subject, and this repo is
+      # squash-merge-only — so linting the title is what actually keeps `main`
+      # readable by semantic-release. Individual commits on the branch are
+      # linted too, but they never reach `main` verbatim.
+      - name: lint PR title
+        run: echo "$PR_TITLE" | npx commitlint
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+      - name: lint commits in range
+        run: npx commitlint --from "origin/${{ github.base_ref }}" --to HEAD
