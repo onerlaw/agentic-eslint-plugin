@@ -84,6 +84,14 @@ jobs:
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # BOTH are needed, and NODE_AUTH_TOKEN is the one that actually works.
+          # `registry-url` above makes setup-node write an .npmrc containing
+          # `_authToken=${NODE_AUTH_TOKEN}`. The plugin checks for an existing
+          # auth token BEFORE it considers NPM_TOKEN, finds that line, and
+          # returns early — so NPM_TOKEN alone is never read, and the publish
+          # 401s against setup-node's literal `XXXXX-XXXXX-XXXXX-XXXXX`
+          # placeholder. Setting NODE_AUTH_TOKEN is what resolves that line.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 
