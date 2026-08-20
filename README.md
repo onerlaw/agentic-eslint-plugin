@@ -100,7 +100,8 @@ that runs `eslint .` on a clean checkout without building first.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/); releases are cut
-automatically by semantic-release on merge to `main`.
+automatically by semantic-release on merge to `main`, authenticated with npm trusted
+publishing (OIDC) rather than a stored token.
 
 ## License
 

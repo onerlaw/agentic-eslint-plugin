@@ -57,29 +57,60 @@ layers:
 ## Releasing
 
 Releases are automatic: merging to `main` runs `.github/workflows/release.yml`, which
-gates on the test job, then runs semantic-release to version, tag, publish to npm with
-provenance, and cut a GitHub Release.
+gates on the test job, then runs semantic-release to version, tag, publish to npm, and
+cut a GitHub Release.
+
+Authentication is **npm trusted publishing (OIDC)** — there is no `NPM_TOKEN` secret.
+The job's `id-token` is exchanged for a short-lived credential at publish time, and
+provenance is generated automatically.
 
 ### Operator setup (one time)
 
-The release job **skips itself** with a notice when `NPM_TOKEN` is absent — it does not
-tag first and fail at publish, because a tag that rode a failed release cannot be cleanly
-withdrawn. To enable publishing:
+npm cannot do the **first** publish over OIDC. A trusted publisher is configured on a
+package, and the package must already exist — `npm trust`'s own prerequisites say so, and
+[npm/cli#8544](https://github.com/npm/cli/issues/8544) (allow the initial publish over
+OIDC, as PyPI does) is still open. So the first version goes up by hand, once:
 
 1. **Own the scope.** Create an npm **Organization** named `onerlaw`
-   (<https://www.npmjs.com/org/create>). Free for public packages. A user-scoped
-   `@onerlaw` also works only if the npm *username* is `onerlaw`.
-2. **Mint a token.** npm → Access Tokens → Generate → **Granular Access Token**, with
-   read/write on `@onerlaw/*`. A Classic "Automation" token also works.
-3. **Store it.** Repo → Settings → Secrets and variables → Actions → New repository
-   secret, named `NPM_TOKEN`.
-4. Re-run the release workflow, or merge anything to `main`.
+   (<https://www.npmjs.com/org/create>). Free for public packages.
+2. **Publish once, manually**, from a checkout of `main`:
+   ```sh
+   npm login          # 2FA prompt
+   npm publish        # --access public is already in package.json
+   ```
+   Use the version semantic-release would have chosen, or any version — the next
+   automated release computes the following one from the commit history.
+3. **Configure the trusted publisher**, either in the package's settings on npmjs.com
+   ("Trusted Publisher" section), or from the CLI (npm >= 11.15.0, 2FA enabled):
+   ```sh
+   npm trust github @onerlaw/agentic-eslint-plugin \
+     --file release.yml --repo onerlaw/agentic-eslint-plugin --allow-publish
+   ```
+4. From then on, every merge to `main` releases with no credential in the repo.
 
-If the token exists but the scope is not owned, the publish fails with **402/403** rather
-than skipping. That is the likeliest first-run failure: fix it at step 1, not by
-re-minting the token.
+### Why there is no token
 
-`GITHUB_TOKEN` is provided by Actions automatically; no setup needed.
+A long-lived publish token is a standing credential with nothing rotating it. Trusted
+publishing removes it entirely. The one cost is the manual first publish above.
+
+If you ever do fall back to a token, note that a Classic **Publish** token is *not*
+enough — npm still demands a 2FA one-time password for it and CI fails with `EOTP`. Only
+a **Granular Access Token** or a Classic **Automation** token bypasses 2FA.
+
+### If a release fails
+
+semantic-release pushes the version tag **before** it publishes, so a failed publish
+leaves a tag pointing at a version that was never released. The next run then reads that
+tag as "already released" and reports no new version — the release wedges silently.
+
+The workflow's last step handles this: on failure it checks whether the tag's version
+actually reached the registry, and deletes the tag if it did not. If you ever need to do
+it by hand:
+
+```sh
+git push origin :refs/tags/vX.Y.Z
+gh release delete vX.Y.Z --yes   # if one was created
+```
 
 ## License
 

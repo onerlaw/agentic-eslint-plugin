@@ -1,7 +1,7 @@
 {
   "name": "@onerlaw/agentic-eslint-plugin",
   "version": "0.0.0-semantically-released",
-  "description": "ESLint guard rules that mechanize conventions agents keep breaking — each rule born from a defect that actually shipped.",
+  "description": "ESLint guard rules that mechanize conventions agents keep breaking \u2014 each rule born from a defect that actually shipped.",
   "keywords": [
     "eslint",
     "eslintplugin",
@@ -44,16 +44,16 @@
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
     "@eslint/js": "^9.18.0",
+    "@semantic-release/npm": "^13.1.5",
     "@typescript-eslint/parser": "^8.20.0",
     "eslint": "^9.18.0",
-    "semantic-release": "^24.2.1",
+    "semantic-release": "^25.0.9",
     "vitest": "^4.1.4"
   },
   "engines": {
     "node": ">=20"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   }
 }

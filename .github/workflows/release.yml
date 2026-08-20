@@ -39,43 +39,71 @@ jobs:
       contents: write # create tags + GitHub releases
       issues: write
       pull-requests: write
-      id-token: write # npm provenance
+      id-token: write # OIDC token for npm trusted publishing
     steps:
-      - name: Check for an npm token
-        id: guard
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Release skipped"
-              echo
-              echo 'No `NPM_TOKEN` secret is configured, so nothing was versioned, tagged or published.'
-              echo 'This is a skip, not a release. See CONTRIBUTING.md for the operator setup.'
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/checkout@v4
-        if: steps.guard.outputs.has_token == 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
 
+      # Node 24: @semantic-release/npm 13 requires ^22.14.0 || >=24.10.0, and
+      # trusted publishing requires npm >= 11.5.1. `registry-url` is what makes
+      # setup-node write the .npmrc that the OIDC exchange needs.
       - uses: actions/setup-node@v4
-        if: steps.guard.outputs.has_token == 'true'
         with:
-          node-version: 22
+          node-version: 24
+          registry-url: https://registry.npmjs.org
           cache: npm
 
-      - run: npm ci
-        if: steps.guard.outputs.has_token == 'true'
+      # Trusted publishing needs npm >= 11.5.1. Fail here with a clear reason
+      # rather than at publish time, where the error is an opaque auth failure.
+      - name: Verify npm supports trusted publishing
+        run: |
+          set -euo pipefail
+          NPM_VERSION=$(npm --version)
+          echo "npm $NPM_VERSION"
+          MIN=11.5.1
+          if [ "$(printf '%s\n' "$MIN" "$NPM_VERSION" | sort -V | head -1)" != "$MIN" ]; then
+            echo "::error::npm >= $MIN is required for trusted publishing; runner has $NPM_VERSION"
+            exit 1
+          fi
 
+      - run: npm ci
+
+      # No NPM_TOKEN. Authentication is npm trusted publishing (OIDC): the job's
+      # id-token is exchanged for a short-lived credential at publish time, and
+      # provenance is generated automatically — no --provenance flag needed.
       - name: semantic-release
-        if: steps.guard.outputs.has_token == 'true'
+        id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
+
+      # semantic-release creates and pushes the version tag BEFORE it publishes,
+      # so a publish that fails leaves an orphaned tag pointing at an unreleased
+      # version. The next run then reads that tag as "already released", reports
+      # no new version, and never retries — the release is silently wedged until
+      # someone deletes the tag by hand. This happened once; hence the cleanup.
+      - name: Remove the tag an unpublished release left behind
+        if: failure() && steps.release.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NAME=$(node -p "require('./package.json').name")
+          git fetch --tags --quiet origin
+          # Newest tag reachable from HEAD, if any.
+          TAG=$(git tag --points-at HEAD | sort -V | tail -1)
+          if [ -z "$TAG" ]; then
+            echo "No tag on HEAD — nothing to unwind."; exit 0
+          fi
+          VERSION="${TAG#v}"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION IS on the registry — $TAG is real, keeping it."; exit 0
+          fi
+          echo "::warning::$TAG was pushed but $NAME@$VERSION never reached the registry. Deleting the orphaned tag so the next run can retry."
+          # Deleted through the API, NOT by pushing to a credential-bearing URL.
+          # A token in a remote URL is persisted into .git/config and leaks from
+          # every tool that prints remotes — this repo ships a rule banning it.
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
