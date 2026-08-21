@@ -1,6 +1,8 @@
+import { defineRule } from "../define-rule.js";
+
 const BIOME_IGNORE = /biome-ignore/;
 
-export default {
+export default defineRule<never, "inlineSuppression">({
   meta: {
     type: "problem",
     docs: {
@@ -46,4 +48,4 @@ export default {
       },
     };
   },
-};
+});

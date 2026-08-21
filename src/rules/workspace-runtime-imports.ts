@@ -1,5 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  scopes: string[];
+}
 
 const PACKAGE_NAME_SEGMENTS = 2;
 
@@ -8,7 +14,7 @@ const ADVICE =
   "package's dist/. Use `import type` if you only need types.";
 
 /** Does `specifier` belong to any of the configured workspace scopes? */
-function inScope(specifier, scopes) {
+function inScope(specifier: string, scopes: readonly string[]): boolean {
   return scopes.some((scope) => specifier.startsWith(scope));
 }
 
@@ -18,13 +24,13 @@ function inScope(specifier, scopes) {
  * An exemption written from the suffix forms alone silently un-exempts a
  * non-suffixed file under `__tests__/`.
  */
-function isTestFile(filePath) {
+function isTestFile(filePath: string): boolean {
   const normalized = filePath.replace(/\\/g, "/");
   return /\.(test|spec)\.tsx?$/.test(normalized) || normalized.includes("/__tests__/");
 }
 
 /** Nearest package.json walking up from the linted file. */
-function nearestPackageJson(fromFile) {
+function nearestPackageJson(fromFile: string): string | null {
   let dir = path.dirname(fromFile);
   for (;;) {
     const candidate = path.join(dir, "package.json");
@@ -35,16 +41,19 @@ function nearestPackageJson(fromFile) {
   }
 }
 
-function declaredWorkspaceDeps(packageJsonPath, scopes) {
+function declaredWorkspaceDeps(
+  packageJsonPath: string,
+  scopes: readonly string[],
+): Set<string> {
   // A malformed manifest must not take down the whole `eslint .` run with a
   // stack trace — every other guard here degrades to a diagnostic. Returning an
   // empty set is the safe direction: it flags MORE, matching the rule's stated
   // bias toward false positives.
-  let pkg;
+  let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   try {
     pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
   } catch {
-    return new Set();
+    return new Set<string>();
   }
   return new Set(
     [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})].filter(
@@ -54,11 +63,11 @@ function declaredWorkspaceDeps(packageJsonPath, scopes) {
 }
 
 /** "@scope/pkg/sub" resolves through the same package entry as "@scope/pkg". */
-function basePackageName(specifier) {
+function basePackageName(specifier: string): string {
   return specifier.split("/").slice(0, PACKAGE_NAME_SEGMENTS).join("/");
 }
 
-export default {
+export default defineRule<Options, "undeclared">({
   meta: {
     type: "problem",
     docs: {
@@ -120,7 +129,13 @@ export default {
   },
 
   create(context) {
-    const scopes = context.options[0]?.scopes ?? [];
+    const options = context.options[0];
+    // The schema is a FULL array schema with `minItems: 1`, so ESLint rejects the
+    // config before `create` ever runs — see tests/required-options.test.ts. This
+    // guard is unreachable; it exists only so the required fields above can be
+    // typed as required rather than smuggled in as optional.
+    if (!options) return {};
+    const scopes = options.scopes;
     const filename = context.filename ?? context.getFilename();
     if (isTestFile(filename)) return {};
 
@@ -129,9 +144,13 @@ export default {
     const declared = declaredWorkspaceDeps(packageJsonPath, scopes);
     const manifest = path.relative(context.cwd, packageJsonPath).replace(/\\/g, "/");
 
-    function check(node, specifierNode, isTypeEdge) {
+    function check(
+      node: TSESTree.Node,
+      specifierNode: TSESTree.Node | undefined,
+      isTypeEdge: boolean,
+    ): void {
       if (isTypeEdge) return;
-      const value = specifierNode?.value;
+      const value = specifierNode?.type === "Literal" ? specifierNode.value : undefined;
       if (typeof value !== "string" || !inScope(value, scopes)) return;
       const pkg = basePackageName(value);
       if (declared.has(pkg)) return;
@@ -160,4 +179,4 @@ export default {
       },
     };
   },
-};
+});

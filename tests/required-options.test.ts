@@ -20,7 +20,7 @@ const linter = new Linter();
 // No `files` key: a config that carries one only applies to a matching
 // filename, and an unmatched config validates nothing — which would make every
 // assertion below pass vacuously.
-function lint(ruleName, options) {
+function lint(ruleName: string, options: readonly unknown[]) {
   return linter.verify("export const a = 1;", {
     languageOptions: { parser: tsParser },
     plugins: { probe: plugin },

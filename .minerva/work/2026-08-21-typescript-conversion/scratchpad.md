@@ -33,3 +33,29 @@ Working notes for the TypeScript conversion. Durable findings get promoted to
 
 ## Notes
 
+### Implementation notes (2026-08-21)
+
+The compiler surfaced 58 errors on first pass. Most were plain annotations on private
+helpers, but four were substantive and are worth recording:
+
+1. **JSX handlers were untyped `any`.** Confirmed the design-phase finding in the real
+   code, not just a spike — `tamagui-native-id`, `responsive-two-pane-flex`,
+   `workspace-chrome-flex` and `breakpoint-guard` all key on JSX nodes.
+2. **`data: { count }` / `data: { factor }` passed numbers** where ESLint's
+   `ReportDescriptor` wants `Record<string, string>`. Two real call sites, both now
+   `String(...)`. This was the gotcha the spike predicted.
+3. **ESLint's API types are estree-based, TSESTree is a superset**, so the two disagree
+   at `getScope`, `getAllComments` and `getText`. Bridged ONCE in `define-rule.ts`
+   (`BridgedSourceCode`) rather than casting in each rule — the whole point of the helper
+   is to keep seams contained.
+4. **`noUncheckedIndexedAccess` caught unguarded `node.quasis[i]` indexing** in
+   `no-credential-in-url`'s split-credential scan.
+
+Two narrowings preserve behavior exactly rather than changing it, and say so inline:
+`classify()` only ever returns `"local-literal"` for an Identifier value, and
+`specifier.imported` is `Identifier | StringLiteral` where only the Identifier form could
+ever have matched the old `?.name` access.
+
+`commitlint.config.js` stays JavaScript — commitlint loads it without a TS loader, and it
+is two lines. Consequence: the ESLint config now matches `**/*.ts`, so that one file is no
+longer linted. Noted rather than hidden.

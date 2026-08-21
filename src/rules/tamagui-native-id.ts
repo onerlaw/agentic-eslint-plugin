@@ -1,4 +1,10 @@
+import type { TSESTree } from "@typescript-eslint/types";
 import { rootTagName } from "../breakpoint-guard.js";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  forwarders?: Record<string, string[]>;
+}
 
 const REACT_NATIVE = "react-native";
 const BANNED_PROP = "nativeID";
@@ -12,8 +18,10 @@ const BANNED_PROP = "nativeID";
  * to one of those modules would otherwise silently inherit the exemption
  * without forwarding anything.
  */
-function forwarderMap(forwarders) {
-  return new Map(Object.entries(forwarders).map(([source, names]) => [source, new Set(names)]));
+function forwarderMap(forwarders: Record<string, string[]>): Map<string, Set<string>> {
+  return new Map(
+    Object.entries(forwarders).map(([source, names]) => [source, new Set(names)] as const),
+  );
 }
 
 const ADVICE =
@@ -28,7 +36,11 @@ const ADVICE =
  * the forwarder modules are named-export only. A type-only specifier binds no
  * value at all.
  */
-function bindsReactNative(specifier, isReactNative, forwarded) {
+function bindsReactNative(
+  specifier: TSESTree.ImportClause,
+  isReactNative: boolean,
+  forwarded: Set<string> | undefined,
+): boolean {
   if (
     specifier.type === "ImportDefaultSpecifier" ||
     specifier.type === "ImportNamespaceSpecifier"
@@ -36,10 +48,13 @@ function bindsReactNative(specifier, isReactNative, forwarded) {
     return isReactNative;
   }
   if (specifier.type !== "ImportSpecifier" || specifier.importKind === "type") return false;
-  return isReactNative || Boolean(forwarded?.has(specifier.imported?.name));
+  // `imported` is Identifier | StringLiteral; only the Identifier form can name
+  // a forwarded export, which is what the original `?.name` access meant.
+  const importedName = specifier.imported.type === "Identifier" ? specifier.imported.name : null;
+  return isReactNative || (importedName !== null && Boolean(forwarded?.has(importedName)));
 }
 
-export default {
+export default defineRule<Options, "droppedNativeId">({
   meta: {
     type: "problem",
     docs: {
@@ -101,8 +116,12 @@ export default {
     const forwarders = forwarderMap(context.options[0]?.forwarders ?? {});
 
     /** Local names bound to a genuine react-native component. */
-    const reactNativeBindings = new Set();
-    const candidates = [];
+    const reactNativeBindings = new Set<string>();
+    const candidates: Array<{
+      node: TSESTree.JSXAttribute;
+      tag: string | null;
+      text: string;
+    }> = [];
 
     return {
       ImportDeclaration(node) {
@@ -122,8 +141,9 @@ export default {
       },
 
       JSXAttribute(node) {
-        if (node.name?.name !== BANNED_PROP) return;
-        const nameNode = node.parent?.name;
+        if (node.name.type !== "JSXIdentifier" || node.name.name !== BANNED_PROP) return;
+        if (node.parent.type !== "JSXOpeningElement") return;
+        const nameNode = node.parent.name;
         const tag = rootTagName(nameNode);
         const text = context.sourceCode.getText(nameNode);
         candidates.push({ node, tag, text });
@@ -135,10 +155,10 @@ export default {
           context.report({
             node,
             messageId: "droppedNativeId",
-            data: { tag: text ?? tag ?? "?" },
+            data: { tag: text || tag || "?" },
           });
         }
       },
     };
   },
-};
+});

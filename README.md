@@ -18,7 +18,8 @@ implying they all apply to you.
 npm install --save-dev @onerlaw/agentic-eslint-plugin
 ```
 
-Requires ESLint 9+ (flat config) and Node 20+. Plain ESM JavaScript, no build step.
+Requires ESLint 9+ (flat config) and Node 20+. Written in TypeScript, published as plain
+ESM JavaScript with type declarations — you install compiled output and never build it.
 
 ## Usage
 
@@ -91,10 +92,37 @@ negative costs another shipped regression. The exception is `no-credential-in-ur
 is biased hard the *other* way — a noisy secret rule gets suppressed, and a suppressed
 rule provides no coverage at all while still reading as some.
 
-### No build step, on purpose
+### The build step earns its place, and `eslint .` still needs no build
 
-`main` points at source. A plugin whose entry pointed at compiled output breaks any gate
-that runs `eslint .` on a clean checkout without building first.
+This package used to point `main` at source and ship no compiled output, on the grounds
+that "a plugin whose entry pointed at compiled output breaks any gate that runs
+`eslint .` on a clean checkout without building first." That reasoning was right about
+the *property* worth protecting and wrong that shipping source was the only way to get
+it.
+
+Sources are TypeScript now and `main`/`exports`/`types` point at `dist/`, so consumers
+get type declarations they never had before. The clean-checkout property survives
+intact, by a different route: `eslint.config.ts` imports `./src/index.ts` **directly**,
+so `eslint .` runs against source and needs no prior build. What changed is who compiles
+— the publisher, once, instead of nobody.
+
+`prepare` is the hook that builds `dist/`, chosen over `prepublishOnly` because it also
+fires on `npm install` in a fresh clone and on a git-URL install; `prepublishOnly` fires
+on none of those. `npm run verify:pack` packs the real tarball, installs it into a
+throwaway consumer, and checks that the package both runs and type-checks from the
+installed artifact — with a negative control, so it cannot pass by resolving types to
+`any`. It runs in CI on every PR and every release, because `files`, `exports`, `main`,
+and `types` are all easy to break in an edit the unit tests would never notice.
+
+### Rule authoring is type-checked, including JSX
+
+`src/define-rule.ts` is the whole abstraction: it types each rule's options and message
+ids, and derives its visitor from the full node union so JSX handlers are typed too.
+That last part is the reason it exists rather than using ESLint's bundled `Rule.RuleModule`
+directly — those types are vanilla ESTree with no JSX variants, so a `JSXAttribute(node)`
+handler written against them silently degrades to `any`, on exactly the rules where AST
+shape matters most. It adds **no runtime dependency**: the node types come from a
+type-only import that the compiler erases.
 
 ## Contributing
 

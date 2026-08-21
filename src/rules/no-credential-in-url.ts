@@ -1,3 +1,5 @@
+import { defineRule } from "../define-rule.js";
+
 // `scheme://user:secret@host`. The secret half must be non-empty and must not
 // be a shell/JS interpolation of a *placeholder* — an interpolation is exactly
 // the case we want to catch, so `${TOKEN}@` is handled by the seam check below
@@ -35,20 +37,20 @@ const CREDENTIAL_WITH_INTERPOLATED_HOST = /:\/\/[^\s:@/]+:(?<secret>[^\s@/]+)@$/
 const LOCAL_OR_RESERVED =
   /@(?:localhost|127\.0\.0\.1|0\.0\.0\.0|::1|host\.docker\.internal|(?:[A-Za-z0-9-]+\.)*(?:example\.(?:com|org|net)|example|test|invalid|localhost))(?:[:/]|$)/;
 
-function flagsAsCredential(text) {
+function flagsAsCredential(text: string): boolean {
   const match = CREDENTIAL_IN_URL.exec(text);
   if (match === null) return false;
-  if (PRINTF_PLACEHOLDER.test(match.groups.secret)) return false;
+  if (PRINTF_PLACEHOLDER.test(match.groups?.secret ?? "")) return false;
   return !LOCAL_OR_RESERVED.test(text);
 }
 
-function flagsAsInterpolatedHostCredential(text) {
+function flagsAsInterpolatedHostCredential(text: string): boolean {
   const match = CREDENTIAL_WITH_INTERPOLATED_HOST.exec(text);
   if (match === null) return false;
-  return !PRINTF_PLACEHOLDER.test(match.groups.secret);
+  return !PRINTF_PLACEHOLDER.test(match.groups?.secret ?? "");
 }
 
-export default {
+export default defineRule<never, "credentialInUrl">({
   meta: {
     type: "problem",
     docs: {
@@ -115,8 +117,8 @@ export default {
         // then `@host`. This is the JS-level form of the same mistake, and the
         // per-quasi scan above cannot see it.
         for (let i = 0; i < node.quasis.length - 1; i += 1) {
-          const before = node.quasis[i].value.cooked ?? "";
-          const after = node.quasis[i + 1].value.cooked ?? "";
+          const before = node.quasis[i]?.value.cooked ?? "";
+          const after = node.quasis[i + 1]?.value.cooked ?? "";
           if (OPEN_CREDENTIAL.test(before) && after.startsWith("@")) {
             if (LOCAL_OR_RESERVED.test(after)) continue;
             context.report({ node, messageId: "credentialInUrl" });
@@ -126,4 +128,4 @@ export default {
       },
     };
   },
-};
+});

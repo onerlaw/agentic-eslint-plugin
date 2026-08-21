@@ -1,3 +1,15 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  errorModule: string;
+  package?: string;
+  bannedSpecifiers?: string[];
+  sentinels?: string[];
+  consentHelper?: string;
+  extraExemptPathSegments?: string[];
+}
+
 const DEFAULT_CONNECT_PACKAGE = "@connectrpc/connect";
 const DEFAULT_BANNED_SPECIFIERS = ["Code", "ConnectError"];
 
@@ -11,13 +23,13 @@ const DEFAULT_BANNED_SPECIFIERS = ["Code", "ConnectError"];
  * guards genuinely cover different trees, and collapsing them into one shared
  * helper would silently change what each exempts.
  */
-function isExempt(filePath, segments) {
+function isExempt(filePath: string, segments: readonly string[]): boolean {
   const normalized = filePath.replace(/\\/g, "/");
   if (/\.test\.[jt]sx?$/.test(normalized)) return true;
   return segments.some((segment) => normalized.includes(segment));
 }
 
-export default {
+export default defineRule<Options, "bannedImport" | "namespaceImport" | "consentHelper" | "sentinel">({
   meta: {
     type: "problem",
     docs: {
@@ -104,7 +116,12 @@ export default {
   },
 
   create(context) {
-    const options = context.options[0] ?? {};
+    const options = context.options[0];
+    // The schema is a FULL array schema with `minItems: 1`, so ESLint rejects the
+    // config before `create` ever runs — see tests/required-options.test.ts. This
+    // guard is unreachable; it exists only so the required fields above can be
+    // typed as required rather than smuggled in as optional.
+    if (!options) return {};
     const { errorModule, consentHelper } = options;
     const connectPackage = options.package ?? DEFAULT_CONNECT_PACKAGE;
     const banned = new Set(options.bannedSpecifiers ?? DEFAULT_BANNED_SPECIFIERS);
@@ -121,7 +138,7 @@ export default {
     if (isExempt(filename, exemptSegments)) return {};
 
     /** Predicate 2: a namespace import of the connect package. */
-    function checkNamespace(specifier, source) {
+    function checkNamespace(specifier: TSESTree.Node, source: string): void {
       if (source !== connectPackage) return;
       context.report({
         node: specifier,
@@ -131,10 +148,10 @@ export default {
     }
 
     /** Predicates 1 and 3: banned value names, from ANY module path. */
-    function checkNamed(specifier, source) {
+    function checkNamed(specifier: TSESTree.ImportSpecifier, source: string): void {
       // Inline `import { type Code }` binds no value.
       if (specifier.importKind === "type") return;
-      const name = specifier.imported?.name;
+      const name = specifier.imported.type === "Identifier" ? specifier.imported.name : "";
       if (banned.has(name)) {
         context.report({
           node: specifier,
@@ -177,4 +194,4 @@ export default {
       },
     };
   },
-};
+});

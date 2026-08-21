@@ -29,8 +29,14 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      # `npm ci` runs `prepare`, which builds dist/ — so verify:pack below is
+      # checking a freshly built artifact, not a stale one.
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # Guards the PUBLISHED artifact: files/exports/main/types are all easy to
+      # break in an edit that the unit tests (which import src/) would not catch.
+      - run: npm run verify:pack
 
   release:
     needs: test

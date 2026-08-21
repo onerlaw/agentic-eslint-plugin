@@ -23,19 +23,26 @@
   "license": "MIT",
   "author": "Derek Honerlaw",
   "type": "module",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
-    "src",
+    "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "prepare": "npm run build"
   },
   "peerDependencies": {
     "eslint": ">=9"
@@ -45,9 +52,13 @@
     "@commitlint/config-conventional": "^19.6.0",
     "@eslint/js": "^9.18.0",
     "@semantic-release/npm": "^13.1.5",
+    "@types/node": "^26.2.0",
     "@typescript-eslint/parser": "^8.20.0",
+    "@typescript-eslint/types": "^8.67.0",
     "eslint": "^9.18.0",
+    "jiti": "^2.6.1",
     "semantic-release": "^25.0.9",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.4"
   },
   "engines": {
@@ -55,5 +66,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "types": "./dist/index.d.ts"
 }

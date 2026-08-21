@@ -3,13 +3,17 @@
 ## Development
 
 ```sh
-npm install
-npm test         # vitest + ESLint RuleTester
-npm run lint     # this package lints itself with its own rules
+npm install          # also builds dist/ via the `prepare` hook
+npm test             # vitest + ESLint RuleTester
+npm run typecheck    # tsc over src/, tests/ and the root configs
+npm run lint         # this package lints itself with its own rules
+npm run build        # tsc -> dist/ (js + .d.ts)
+npm run verify:pack  # packs the tarball and checks a real consumer install
 ```
 
-Plain ESM JavaScript, no build step. `main` points at source deliberately — see the
-README.
+TypeScript sources in `src/`, published as compiled ESM plus `.d.ts` from `dist/`.
+`main` points at `dist/`, but `eslint .` still needs no build — the ESLint config imports
+`./src/index.ts` directly. See the README's design notes.
 
 ## Commits
 
