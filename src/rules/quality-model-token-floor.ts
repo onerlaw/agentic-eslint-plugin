@@ -1,3 +1,12 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  tierFunction: string;
+  floorIdentifier: string;
+  capProperty?: string;
+}
+
 const DEFAULT_CAP_PROPERTY = "max_tokens";
 
 const ADVICE =
@@ -8,7 +17,7 @@ const ADVICE =
   "Reply length belongs in the prompt, not the cap.";
 
 /** Is this the configured cap key of an object property? */
-function isCapProperty(node, capProperty) {
+function isCapProperty(node: TSESTree.Property, capProperty: string): boolean {
   const key = node.key;
   if (node.computed) return false;
   if (key.type === "Identifier") return key.name === capProperty;
@@ -26,7 +35,11 @@ function isCapProperty(node, capProperty) {
  * Returns "literal" (inline number), "local-literal" (identifier bound locally to a
  * number), or null (allowed / unresolvable).
  */
-function classify(valueNode, localConsts, floorIdentifier) {
+function classify(
+  valueNode: TSESTree.Node,
+  localConsts: Map<string, TSESTree.Expression>,
+  floorIdentifier: string,
+): "literal" | "local-literal" | null {
   if (valueNode.type === "Literal" && typeof valueNode.value === "number") return "literal";
   if (valueNode.type !== "Identifier") return null;
   if (valueNode.name === floorIdentifier) return null;
@@ -40,7 +53,7 @@ function classify(valueNode, localConsts, floorIdentifier) {
   return null;
 }
 
-export default {
+export default defineRule<Options, "literalCap" | "localLiteralCap">({
   meta: {
     type: "problem",
     docs: {
@@ -121,16 +134,20 @@ export default {
   },
 
   create(context) {
-    const options = context.options[0] ?? {};
+    const options = context.options[0];
+    // The schema is a FULL array schema with `minItems: 1`, so ESLint rejects the
+    // config before `create` ever runs — see tests/required-options.test.ts. This
+    // guard is unreachable; it exists only so the required fields above can be
+    // typed as required rather than smuggled in as optional.
+    if (!options) return {};
     const { tierFunction, floorIdentifier } = options;
     const capProperty = options.capProperty ?? DEFAULT_CAP_PROPERTY;
     const data = { tierFunction, floorIdentifier, capProperty };
 
     let usesQualityModel = false;
-    /** @type {Map<string, import("estree").Expression>} name -> const initializer */
-    const localConsts = new Map();
-    /** @type {import("estree").Property[]} */
-    const capProperties = [];
+    /** name -> const initializer */
+    const localConsts = new Map<string, TSESTree.Expression>();
+    const capProperties: TSESTree.Property[] = [];
 
     return {
       Identifier(node) {
@@ -153,7 +170,9 @@ export default {
           const verdict = classify(property.value, localConsts, floorIdentifier);
           if (verdict === "literal") {
             context.report({ node: property, messageId: "literalCap", data });
-          } else if (verdict === "local-literal") {
+            // `classify` returns "local-literal" only for an Identifier value, so
+            // this narrowing is equivalent — it just proves it to the compiler.
+          } else if (verdict === "local-literal" && property.value.type === "Identifier") {
             context.report({
               node: property,
               messageId: "localLiteralCap",
@@ -164,4 +183,4 @@ export default {
       },
     };
   },
-};
+});

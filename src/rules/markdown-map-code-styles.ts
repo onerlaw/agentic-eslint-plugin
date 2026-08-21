@@ -1,3 +1,11 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  markerImport: string;
+  builder: string;
+}
+
 const ADVICE =
   "A markdown style map must take its code rules from {{builder}}(). " +
   "react-native-markdown-display merges a consumer's map with its own defaults PER " +
@@ -6,7 +14,7 @@ const ADVICE =
   "unthemed grey box. Spread the builder's result and override only what is " +
   "genuinely this surface's own.";
 
-export default {
+export default defineRule<Options, "missingCodeStyles">({
   meta: {
     type: "problem",
     docs: {
@@ -78,10 +86,15 @@ export default {
   },
 
   create(context) {
-    const { markerImport, builder } = context.options[0] ?? {};
+    const options = context.options[0];
+    // The schema is a FULL array schema with `minItems: 1`, so ESLint rejects the
+    // config before `create` ever runs — see tests/required-options.test.ts. This
+    // guard is unreachable; it exists only so the required fields above can be
+    // typed as required rather than smuggled in as optional.
+    if (!options) return {};
+    const { markerImport, builder } = options;
 
-    /** @type {import("estree").ImportSpecifier | null} */
-    let fontStylesImport = null;
+    let fontStylesImport: TSESTree.ImportSpecifier | null = null;
     let usesCodeStyles = false;
 
     return {
@@ -103,4 +116,4 @@ export default {
       },
     };
   },
-};
+});

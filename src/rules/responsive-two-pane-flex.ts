@@ -1,3 +1,6 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
 import {
   flexFactorOfJsxAttribute,
   flexFactorOfProperty,
@@ -18,16 +21,16 @@ const ADVICE =
   "back to `auto` and the parent's `alignItems: stretch` keeps full width.";
 
 /** The base component of a `styled(Base, {...})` call, or null. */
-function styledBaseName(objectExpression) {
+function styledBaseName(objectExpression: TSESTree.Node): string | null {
   const call = objectExpression.parent;
   if (call?.type !== "CallExpression") return null;
-  if (call.callee?.type !== "Identifier" || call.callee.name !== "styled") return null;
+  if (call.callee.type !== "Identifier" || call.callee.name !== "styled") return null;
   if (call.arguments[1] !== objectExpression) return null;
   const base = call.arguments[0];
   return base?.type === "Identifier" ? base.name : null;
 }
 
-export default {
+export default defineRule<never, "collapsingFlex">({
   meta: {
     type: "problem",
     docs: {
@@ -80,12 +83,16 @@ export default {
     let hasColumnContainer = false;
     let hasBreakpointProp = false;
     let hasRowDirection = false;
-    const candidates = [];
+    const candidates: Array<{ node: TSESTree.Node; form: string }> = [];
 
     return {
       JSXAttribute(node) {
-        const name = node.name?.name;
-        if (name === "flexDirection" && node.value?.value === "column") {
+        const name = node.name.type === "JSXIdentifier" ? node.name.name : null;
+        if (
+          name === "flexDirection" &&
+          node.value?.type === "Literal" &&
+          node.value.value === "column"
+        ) {
           hasColumnContainer = true;
         }
         if (typeof name === "string" && /^\$gt(?:Sm|Md|Lg)$/.test(name)) {
@@ -94,14 +101,16 @@ export default {
 
         if (flexFactorOfJsxAttribute(node) !== UNCONDITIONAL_FLEX) return;
         if (isBreakpointGuarded(node)) return;
-        const tag = rootTagName(node.parent?.name);
+        const tag = node.parent.type === "JSXOpeningElement" ? rootTagName(node.parent.name) : null;
         if (tag && EXEMPT_TAGS.has(tag)) return;
         candidates.push({ node, form: `<${tag ?? "?"} flex={1}>` });
       },
 
       Property(node) {
-        const key = node.key?.type === "Identifier" ? node.key.name : null;
-        if (key === "flexDirection" && node.value?.value === "row") hasRowDirection = true;
+        const key = node.key.type === "Identifier" ? node.key.name : null;
+        if (key === "flexDirection" && node.value.type === "Literal" && node.value.value === "row") {
+          hasRowDirection = true;
+        }
         if (key && /^\$gt(?:Sm|Md|Lg)$/.test(key)) hasBreakpointProp = true;
 
         if (flexFactorOfProperty(node) !== UNCONDITIONAL_FLEX) return;
@@ -120,4 +129,4 @@ export default {
       },
     };
   },
-};
+});

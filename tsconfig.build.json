@@ -1,0 +1,12 @@
+{
+  // Emit config: src/ only. Tests are type-checked by tsconfig.json but must
+  // never reach dist/.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}

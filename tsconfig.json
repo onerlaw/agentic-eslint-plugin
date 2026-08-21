@@ -1,0 +1,19 @@
+{
+  // Broad config: type-checks src/, tests/ and the root-level *.ts config files.
+  // It cannot also emit — a `rootDir` of src/ that includes tests/ fails TS6059
+  // even under --noEmit — so emit lives in tsconfig.build.json.
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"]
+}

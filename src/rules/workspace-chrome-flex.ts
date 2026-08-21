@@ -1,3 +1,10 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { defineRule } from "../define-rule.js";
+
+interface Options {
+  allow?: string[];
+}
+
 import {
   flexFactorOfJsxAttribute,
   flexFactorOfProperty,
@@ -9,7 +16,7 @@ const ADVICE =
   "must not assert a flex basis at all. Use `flexGrow`/`flexShrink` (basis stays " +
   '`auto`) for fill, or `width: "100%"` for a full-width row child.';
 
-export default {
+export default defineRule<Options, "unguardedFlex">({
   meta: {
     type: "problem",
     docs: {
@@ -63,8 +70,8 @@ export default {
     const allow = context.options[0]?.allow ?? [];
     if (allow.some((suffix) => filename.endsWith(suffix))) return {};
 
-    function report(node, factor) {
-      context.report({ node, messageId: "unguardedFlex", data: { factor } });
+    function report(node: TSESTree.Node, factor: number): void {
+      context.report({ node, messageId: "unguardedFlex", data: { factor: String(factor) } });
     }
 
     return {
@@ -80,4 +87,4 @@ export default {
       },
     };
   },
-};
+});

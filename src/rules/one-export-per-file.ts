@@ -1,4 +1,11 @@
-const FUNCTION_NODES = new Set([
+import type { TSESTree } from "@typescript-eslint/types";
+import { type BridgedSourceCode, defineRule } from "../define-rule.js";
+
+interface Options {
+  allow?: string[];
+}
+
+const FUNCTION_NODES = new Set<string>([
   "FunctionDeclaration",
   "ArrowFunctionExpression",
   "FunctionExpression",
@@ -7,28 +14,35 @@ const FUNCTION_NODES = new Set([
 ]);
 
 /** Is this declaration a function/component rather than data or a type? */
-function isFunctionLike(node) {
-  return FUNCTION_NODES.has(node?.type);
+function isFunctionLike(node: TSESTree.Node | null | undefined): boolean {
+  return node !== null && node !== undefined && FUNCTION_NODES.has(node.type);
 }
 
 /**
  * How many functions a LOCAL export list (`export { a, b }`) names.
  * A re-export is handled by the caller — its functions live in another file.
  */
-function functionsInExportList(node, sourceCode) {
+function functionsInExportList(
+  node: TSESTree.ExportNamedDeclaration,
+  sourceCode: BridgedSourceCode,
+): number {
   const scope = sourceCode.getScope(node);
   let found = 0;
   for (const specifier of node.specifiers) {
     if (specifier.exportKind === "type") continue;
-    const name = specifier.local?.name;
-    const binding = scope.set.get(name);
-    const definition = binding?.defs?.[0]?.node;
-    if (isFunctionLike(definition) || isFunctionLike(definition?.init)) found += 1;
+    const name = specifier.local.type === "Identifier" ? specifier.local.name : null;
+    const binding = name === null ? undefined : scope.set.get(name);
+    const definition = binding?.defs[0]?.node as TSESTree.Node | undefined;
+    if (isFunctionLike(definition)) {
+      found += 1;
+    } else if (definition?.type === "VariableDeclarator" && isFunctionLike(definition.init)) {
+      found += 1;
+    }
   }
   return found;
 }
 
-export default {
+export default defineRule<Options, "tooMany">({
   meta: {
     type: "problem",
     docs: {
@@ -122,9 +136,9 @@ export default {
 
       "Program:exit"(node) {
         if (count > 1) {
-          context.report({ node, messageId: "tooMany", data: { count } });
+          context.report({ node, messageId: "tooMany", data: { count: String(count) } });
         }
       },
     };
   },
-};
+});
