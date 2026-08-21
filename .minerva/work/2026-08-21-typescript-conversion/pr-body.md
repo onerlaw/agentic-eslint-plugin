@@ -32,21 +32,30 @@ Three real defects, which is the case for doing this at all:
 and erased at build. `package.json` still has no `dependencies` key, and `verify:pack`
 asserts that against the packed tarball on every run.
 
-## Release: BREAKING CHANGE, direct to `latest`
+## Release: `feat:` minor, direct to `latest`
 
-The commit carries a `BREAKING CHANGE:` footer, so semantic-release will cut **v1.0.0**
-rather than a minor. That is the honest classification: `main` and `exports` no longer
-resolve to `src/`. Registry consumers are unaffected — the tarball ships `dist/` — but
-anything deep-importing a `src/` path, or consuming this package straight from a git
-checkout without building, must change.
+This ships as a **minor** (0.1.0 -> 0.2.0), not a major, and that call was made
+deliberately rather than by default.
 
-**First release goes direct to `latest`, not a `next` canary.** A canary would require
-editing `.releaserc.json`'s branch config — adding unreviewed moving parts to the
-riskiest surface in this change — and would leave `latest` stale until someone promoted
-it by hand. The substantive gate is `npm run verify:pack`, which packs the real tarball,
-installs it into a throwaway consumer, and checks the package both runs and type-checks
-from the installed artifact, with a negative control so it cannot pass by resolving types
-to `any`.
+The instinct is to treat repointing `main`/`exports` as breaking. But `main` already
+declared `exports` as `{ ".": "./src/index.js", "./package.json": "./package.json" }` —
+encapsulated — so deep-importing `src/...` through package resolution was **already
+impossible** for registry consumers. Anyone doing the normal thing
+(`import plugin from "@onerlaw/agentic-eslint-plugin"`) gets a behaviorally identical
+compiled module: 154/154 tests unchanged, and `verify:pack` installs the real tarball and
+exercises it.
+
+The residual break surface is narrow and exotic: reading
+`node_modules/@onerlaw/agentic-eslint-plugin/src/...` by raw filesystem path, bypassing
+`exports` entirely. That is documented here rather than hidden behind a version number.
+Consumers otherwise only gain something — `.d.ts` where there were none.
+
+**Release goes direct to `latest`, not a `next` canary.** A canary would require editing
+`.releaserc.json`'s branch config — adding unreviewed moving parts to the riskiest surface
+in this change — and would leave `latest` stale until someone promoted it by hand. The
+substantive gate is `npm run verify:pack`, which packs the real tarball, installs it into
+a throwaway consumer, and checks the package both runs and type-checks from the installed
+artifact, with a negative control so it cannot pass by resolving types to `any`.
 
 ## Verification
 
