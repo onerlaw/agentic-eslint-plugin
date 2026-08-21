@@ -9,6 +9,13 @@ Working notes for the TypeScript conversion. Durable findings get promoted to
 - [3/3 accept, round 2] approach selection: C′ — `defineRule` helper + type-only TSESTree types, zero runtime deps. Round 1 failed 2/3: the Skeptic proved bare `Rule.RuleModule` yields `TS7006` implicit-any on every JSX handler, so the original pick gave ZERO safety on the 4 most AST-sensitive files. Rejected: A (bare `Rule.RuleModule`, dominated) and B (`ESLintUtils.RuleCreator`, adds the first runtime dependency).
 - [3/3 accept, round 2] whole-proposal acceptance. Round 1 failed 2/3 on a HIGH finding: `release.yml` carries its own duplicated `test` job that gates the OIDC publish, so adding typecheck to only `ci.yml` would leave the publish gate weaker than the PR gate. Both workflows now bound by criterion 8.
 
+- [user-directed] "ship it" — the user instructed shipping directly. Bypassed: the
+  completion-verification panel's remaining votes (Proponent had returned `revise` solely
+  because the PR body did not yet exist; that gap was closed by `pr-body.md` before the
+  directive), Phase 3 review, and Phase 4 promote. The directive itself is the recorded
+  justification — it is NOT predicate evidence, and the skipped phases can still be run
+  by hand against this branch.
+
 ### Concerns logged but not blocking (audit trail for review/promote)
 
 - `engines.node` justification was internally contradictory — `prepare` DOES fire on git-URL installs, so a consumer can build. Corrected in the proposal rather than papered over.
